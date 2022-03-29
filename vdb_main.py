@@ -1,18 +1,18 @@
-import os, time, re, csv, discord, asyncio, config, emoji, sys, colorama, typing, signal, errno
-from valve.source.a2s import ServerQuerier, NoResponseError
+import os, time, re, discord, asyncio, emoji, colorama, typing, signal, errno
+from code import config
 from matplotlib import pyplot as plt
 from datetime import datetime, timedelta
-from colorama import Fore, Style, init
-from config import LOGCHAN_ID as lchanID
-from config import VCHANNEL_ID as chanID
-from config import file
+from colorama import Fore, Style
+from code.config import LOGCHAN_ID as lchanID
+from code.config import VCHANNEL_ID as chanID
+from code.config import file
 from discord.ext import commands
 import matplotlib.dates as md
 import matplotlib.ticker as ticker
-import matplotlib.spines as ms
 import pandas as pd
+import a2s
 
-#Color init
+# Color init
 colorama.init()
 
 pdeath = '.*?Got character ZDOID from (\w+) : 0:0'
@@ -20,22 +20,26 @@ pevent = '.*? Random event set:(\w+)'
 server_name = config.SERVER_NAME
 bot = commands.Bot(command_prefix=';', help_command=None)
 
-    # maybe in the future for reformatting output of random mob events
-    # eventype = ['Skeletons', 'Blobs', 'Forest Trolls', 'Wolves', 'Surtlings']
 
-def signal_handler(signal, frame):          # Method for catching SIGINT, cleaner output for restarting bot
-  os._exit(0)
+# maybe in the future for reformatting output of random mob events
+# eventype = ['Skeletons', 'Blobs', 'Forest Trolls', 'Wolves', 'Surtlings']
+
+def signal_handler(signal, frame):  # Method for catching SIGINT, cleaner output for restarting bot
+    os._exit(0)
+
 
 signal.signal(signal.SIGINT, signal_handler)
+
 
 async def timenow():
     now = datetime.now()
     gettime = now.strftime("%d/%m/%Y %H:%M:%S")
     return gettime
 
+
 # Basic file checking
 def check_csvs():
-    try: 
+    try:
         os.makedirs('csv')
     except OSError as e:
         if e.errno != errno.EEXIST:
@@ -51,55 +55,63 @@ def check_csvs():
                 print(Fore.YELLOW + f'{f} doesn\'t exist, creating new...' + Style.RESET_ALL)
             time.sleep(0.2)
 
+
 check_csvs()
+
 
 @bot.event
 async def on_ready():
     print(Fore.GREEN + f'Bot connected as {bot.user} :)' + Style.RESET_ALL)
     print('Log channel : %d' % (lchanID))
-    if config.USEVCSTATS == True:
+    if config.USEVCSTATS:
         print('VoIP channel: %d' % (chanID))
         bot.loop.create_task(serverstatsupdate())
 
+
 @bot.command(name='help')
-async def help_ctx(ctx):  
-    help_embed = discord.Embed(description="[**Valheim Discord Bot**](https://github.com/ckbaudio/valheim-discord-bot)", color=0x33a163,)
+async def help_ctx(ctx):
+    help_embed = discord.Embed(description="[**Valheim Discord Bot**](https://github.com/qwertyuu/valheim-discord-bot)",
+                               color=0x33a163, )
     help_embed.add_field(name="{}stats <n>".format(bot.command_prefix),
-                        value="Plots a graph of connected players over the last X hours.\n Example: `{}stats 12` \n Available: 24, 12, w (*default: 24*)".format(bot.command_prefix),
-                        inline=True)
-    help_embed.add_field(name="{}deaths".format(bot.command_prefix), 
-                        value="Shows a top 5 leaderboard of players with the most deaths. \n Example:`{}deaths`".format(bot.command_prefix),
-                        inline=True)
+                         value="Plots a graph of connected players over the last X hours.\n Example: `{}stats 12` \n Available: 24, 12, w (*default: 24*)".format(
+                             bot.command_prefix),
+                         inline=True)
+    help_embed.add_field(name="{}deaths".format(bot.command_prefix),
+                         value="Shows a top 5 leaderboard of players with the most deaths. \n Example:`{}deaths`".format(
+                             bot.command_prefix),
+                         inline=True)
     help_embed.set_footer(text="Valbot v0.42")
     await ctx.send(embed=help_embed)
 
+
 @bot.command(name="deaths")
 async def leaderboards(ctx):
+    return await ctx.send('Nope')
     top_no = 5
-    ldrembed = discord.Embed(title=":skull_crossbones: __Death Leaderboards (top 5)__ :skull_crossbones:", color=0xFFC02C)
+    ldrembed = discord.Embed(title=":skull_crossbones: __Death Leaderboards (top 5)__ :skull_crossbones:",
+                             color=0xFFC02C)
     df = pd.read_csv('csv/deathlog.csv', header=None, usecols=[0, 1])
     df_index = df[1].value_counts().nlargest(top_no).index
     df_score = df[1].value_counts().nlargest(top_no)
-    x = 0
-    l = 1 #just in case I want to make listed iterations l8r
-    for ind in df_index:
+    l = 1  # just in case I want to make listed iterations l8r
+    for x in df_index:
         grammarnazi = 'deaths'
         leader = ''
         # print(df_index[x], df_score[x]) 
-        if df_score[x] == 1 :
+        if df_score[x] == 1:
             grammarnazi = 'death'
         if l == 1:
             leader = ':crown:'
-        ldrembed.add_field(name="{} {}".format(df_index[x],leader),
-                           value='{} {}'.format(df_score[x],grammarnazi),
+        ldrembed.add_field(name="{} {}".format(df_index[x], leader),
+                           value='{} {}'.format(df_score[x], grammarnazi),
                            inline=False)
-        x += 1
         l += 1
     await ctx.send(embed=ldrembed)
 
+
 @bot.command(name="stats")
 async def gen_plot(ctx, tmf: typing.Optional[str] = '24'):
-    user_range = 0
+    return await ctx.send('Nope')
     if tmf.lower() in ['w', 'week', 'weeks']:
         user_range = 168 - 1
         interval = 24
@@ -119,10 +131,10 @@ async def gen_plot(ctx, tmf: typing.Optional[str] = '24'):
         timedo = '24hrs'
         description = 'Players online in the past ' + timedo + ':'
 
-    #Get data from csv
+    # Get data from csv
     df = pd.read_csv('csv/playerstats.csv', header=None, usecols=[0, 1], parse_dates=[0], dayfirst=True)
-    lastday = datetime.now() - timedelta(hours = user_range)
-    last24 = df[df[0]>=(lastday)]
+    lastday = datetime.now() - timedelta(hours=user_range)
+    last24 = df[df[0] >= lastday]
 
     # Plot formatting / styling matplotlib
     plt.style.use('seaborn-pastel')
@@ -141,19 +153,20 @@ async def gen_plot(ctx, tmf: typing.Optional[str] = '24'):
         tick.set_color('gray')
     for tick in ax.get_yticklabels():
         tick.set_color('gray')
-    
-    #Plot and rasterize figure
-    plt.gcf().set_size_inches([5.5,3.0])
+
+    # Plot and rasterize figure
+    plt.gcf().set_size_inches([5.5, 3.0])
     plt.plot(last24[0], last24[1])
     plt.tick_params(axis='both', which='both', bottom=False, left=False)
-    plt.margins(x=0,y=0,tight=True)
+    plt.margins(x=0, y=0, tight=True)
     plt.tight_layout()
-    fig.savefig('temp.png', transparent=True, pad_inches=0) # Save and upload Plot
+    fig.savefig('temp.png', transparent=True, pad_inches=0)  # Save and upload Plot
     image = discord.File('temp.png', filename='temp.png')
     plt.close()
     embed = discord.Embed(title=server_name, description=description, colour=12320855)
     embed.set_image(url='attachment://temp.png')
     await ctx.send(file=image, embed=embed)
+
 
 async def mainloop(file):
     await bot.wait_until_ready()
@@ -164,33 +177,33 @@ async def mainloop(file):
         testfile.close()
         while not bot.is_closed():
             with open(file, encoding='utf-8', mode='r') as f:
-                f.seek(0,2)
+                f.seek(0, 2)
                 while True:
                     line = f.readline()
-                    if(re.search(pdeath, line)):
+                    if re.search(pdeath, line):
                         pname = re.search(pdeath, line).group(1)
                         await lchannel.send(':skull: **' + pname + '** just died!')
-                    if(re.search(pevent, line)):
+                    if re.search(pevent, line):
                         eventID = re.search(pevent, line).group(1)
                         await lchannel.send(':loudspeaker: Random mob event: **' + eventID + '** has occurred')
                     await asyncio.sleep(0.2)
     except IOError:
         print('No valid log found, event reports disabled. Please check config.py')
-        print('To generate server logs, run server with -logfile launch flag')  
-        
-async def serverstatsupdate():
-	await bot.wait_until_ready()
-	while not bot.is_closed():
-		try:
-			with ServerQuerier(config.SERVER_ADDRESS) as server:
-				channel = bot.get_channel(chanID)
-				await channel.edit(name=f"{emoji.emojize(':eggplant:')} In-Game: {server.info()['player_count']}" +" / 10")
+        print('To generate server logs, run server with -logfile launch flag')
 
-		except NoResponseError:
-			print(Fore.RED + await timenow(), 'No reply from A2S, retrying (30s)...' + Style.RESET_ALL)
-			channel = bot.get_channel(chanID)
-			await channel.edit(name=f"{emoji.emojize(':cross_mark:')} Server Offline")
-		await asyncio.sleep(30)
-        
+
+async def serverstatsupdate():
+    await bot.wait_until_ready()
+    channel = bot.get_channel(chanID)
+    while not bot.is_closed():
+        try:
+            server_info = a2s.info(config.SERVER_ADDRESS)
+            await channel.edit(name=f"{emoji.emojize(':eggplant:')} In-Game: {server_info.player_count}")
+        except Exception:
+            print(Fore.RED + await timenow(), 'No reply from A2S, retrying (30s)...' + Style.RESET_ALL)
+            await channel.edit(name=f"{emoji.emojize(':cross_mark:')} Server Offline")
+        await asyncio.sleep(30)
+
+
 bot.loop.create_task(mainloop(file))
 bot.run(config.BOT_TOKEN)
