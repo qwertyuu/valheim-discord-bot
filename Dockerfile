@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y gcc git
 
 COPY ./requirements.txt /usr/code/
 
-RUN cd /usr/code && pip install -r requirements.txt && mkdir -p data/source
+RUN cd /usr/code && pip install -r requirements.txt
 
 WORKDIR /usr/code
 ENV PYTHONPATH="${PYTHONPATH}:/usr/code/"
