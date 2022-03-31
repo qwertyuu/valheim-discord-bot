@@ -192,16 +192,23 @@ async def mainloop(file):
         print('To generate server logs, run server with -logfile launch flag')
 
 
+async def update_discord_channel(name):
+    channel = bot.get_channel(chanID)
+    try:
+        await channel.edit(name=name)
+    except Exception as e:
+        print(Fore.RED + await timenow(), 'Could not set channel name in discord...' + Style.RESET_ALL)
+
+
 async def serverstatsupdate():
     await bot.wait_until_ready()
-    channel = bot.get_channel(chanID)
     while not bot.is_closed():
         try:
             server_info = a2s.info(config.SERVER_ADDRESS)
-            await channel.edit(name=f"{emoji.emojize(':eggplant:')} In-Game: {server_info.player_count}")
+            await update_discord_channel(f"{emoji.emojize(':eggplant:')} In-Game: {server_info.player_count}")
         except Exception:
             print(Fore.RED + await timenow(), 'No reply from A2S, retrying (30s)...' + Style.RESET_ALL)
-            await channel.edit(name=f"{emoji.emojize(':cross_mark:')} Server Offline")
+            await update_discord_channel(f"{emoji.emojize(':cross_mark:')} Server Offline")
         await asyncio.sleep(30)
 
 
