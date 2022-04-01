@@ -1,0 +1,12 @@
+version: '3'
+services:
+  bot:
+    container_name: valheim-discord-bot
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: valheim-discord-bot
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - '.:/usr/code:delegated'

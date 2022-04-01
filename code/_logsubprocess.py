@@ -1,5 +1,5 @@
 from datetime import datetime
-import time, os, re
+import re
 import csv, asyncio
 from valve.source.a2s import ServerQuerier, NoResponseError
 import config
